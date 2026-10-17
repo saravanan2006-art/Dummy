@@ -23,7 +23,7 @@ jobs:
                 run : npm --version
 
             -   name: build
-                run: npm ci
+                run: npm install
 
             -   name : test
                 run: npm test
