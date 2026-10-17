@@ -15,6 +15,12 @@ jobs:
                 uses: actions/setup-node@v4
                 with:
                     node-version: 24
+            
+            -   name: node version
+                run : node --verison
+            
+            -   name : npm version
+                run : npm --version
 
             -   name: build
                 run: npm ci
