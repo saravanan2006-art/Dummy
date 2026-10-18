@@ -7,5 +7,5 @@ test('GET / should return the greeting message', async () => {
     const response = await request(app).get('/');
 
     expect(response.status).toBe(200);
-    expect(response.text).toBe('Asslamwalikkum Lyarii !!!');
+    expect(response.text).toBe('Matha pitha Mamitha');
 });
