@@ -4,7 +4,7 @@ import express from 'express';
 const app = express();
 
 app.get('/', (req, res) => {
-  res.send('Asslamwalikkum Lyarii !!!');
+  res.send('Matha pitha Mamitha');
 });
 
 // Start the server only when running this file directly
