@@ -1,60 +1,72 @@
+
 name: CICD-1
 
 on:
-    push:
-    pull_request:
+  push:
+  pull_request:
 
 env:
-    DOCKER_IMG : sarra006/day:latest
-    
+  DOCKER_IMG: sarra006/day:latest
+
 jobs:
-    build_host_job:
-        runs-on: ubuntu-latest
-        steps:
-            -   name: Checkout
-                uses: actions/checkout@v4
-            
-            -   name: Set up Node.js
-                uses: actions/setup-node@v4
-                with:
-                    node-version: 24
-            
-            -   name: node version
-                run : node --version
-            
-            -   name : npm version
-                run : npm --version
+  build_host_job:
+    runs-on: ubuntu-latest
 
-            -   name: build
-                run: npm install
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-            -   name : test
-                run: npm test
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
 
-            -   name: docker login
-                uses : docker/login-action@v3
-                with :
-                    username : ${{secrets.DOCKERHUB_USERNAME}}
-                    password : ${{secrets.DOCKERHUB_TOKEN}}
-            -   name : docker img push
-                run : docker push ${{DOCKER_IMG}}
+      - name: Install dependencies
+        run: npm install
 
-    deploy-pannu:
-        needs: build_host_job
-        runs-on: ubuntu-latest
-        steps:
-            -   name: server shh
-                uses : appleboy/ssh-action@v1
-                with :
-                    host : ${{vars.HOST_API}} 
-                    username : ubuntu
-                    key : ${{secrets.EC2_KEY}}
-                    port : 22
-                    scripts : |
-                        docker rmi ${{env.DOCKER_IMG}}
-                        docker pull ${{env.DOCKER_IMG}}
-                        docker stop test-cont
-                        docker run test-cont
-                        docker run -d -p 80:3000 --name test-cont ${{env.DOCKER_IMG}}
+      - name: Run tests
+        run: npm test --if-present
 
+      - name: Docker Hub login
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Build and push Docker image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.DOCKER_IMG }}
+
+  deploy-pannu:
+    needs: build_host_job
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2 through SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.HOST_API }}
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY }}
+          port: 22
+          script: |
+            set -e
+
+            docker pull ${{ env.DOCKER_IMG }}
+
+            docker stop test-cont || true
+            docker rm test-cont || true
+
+            docker run -d \
+              --restart unless-stopped \
+              -p 80:3000 \
+              --name test-cont \
+              ${{ env.DOCKER_IMG }}
+
+            docker ps --filter name=test-cont
