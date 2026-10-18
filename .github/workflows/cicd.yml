@@ -4,6 +4,9 @@ on:
     push:
     pull_request:
 
+env:
+    DOCKER_IMG : sarra006/day:latest
+    
 jobs:
     build_host_job:
         runs-on: ubuntu-latest
@@ -30,5 +33,23 @@ jobs:
 
             -   name: running
                 run: npm run dev
+
+    deploy-pannu:
+        needs: build_host_job
+        runs-on: ubuntu-latest
+        steps:
+            -   name: server shh
+                uses : appleboy/ssh-action@v1
+                with :
+                    host : ${{vars.HOST_API}} 
+                    username : ubuntu
+                    key : ${{secrets.EC2_KEY}}
+                    port : 22
+                    scripts : |
+                        docker rmi ${{env.DOCKER_IMG}}
+                        docker pull ${{env.DOCKER_IMG}}
+                        docker stop test-cont
+                        docker run test-cont
+                        docker run -d -p 80:3000 --name test-cont ${{env.DOCKER_IMG}}
 
 
